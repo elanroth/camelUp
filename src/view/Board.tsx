@@ -85,19 +85,9 @@ function segStroke(i: number, highlighted: boolean) {
 
 // ---------------------------------------------------------------------------
 // Camel silhouette path (40×30 viewBox, right-facing, centre ≈ 20,15)
+// Designed with concave bottom to allow stacking like physical pieces
 // ---------------------------------------------------------------------------
-const CAMEL_D =
-  'M 4,30 L 4,22 ' +
-  'C 4,14 8,8 14,5 ' +
-  'C 16,3 20,2 22,4 ' +
-  'C 24,6 26,10 26,18 ' +
-  'L 28,12 ' +
-  'C 30,9 34,10 36,14 ' +
-  'C 38,18 36,24 33,25 ' +
-  'C 31,25 30,23 32,23 ' +
-  'L 34,23 L 34,30 L 30,30 L 30,23 ' +
-  'L 22,23 L 22,30 L 18,30 L 18,23 ' +
-  'L 10,23 L 10,30 Z';
+const CAMEL_D = 'M 6,30 L 6,20 Q 6,16 10,16 L 32,16 Q 36,16 36,20 L 36,30 Z';
 
 // ---------------------------------------------------------------------------
 // Component props
@@ -139,7 +129,7 @@ export function Board({ state, highlightedSpace, onSpaceClick, selectedCamel, on
         background: 'linear-gradient(145deg, #c9954a 0%, #a97230 55%, #8c5e22 100%)',
         boxShadow: '0 4px 24px rgba(0,0,0,0.40), inset 0 1px 0 rgba(255,255,255,0.15)',
         border: '3px solid #6b4113',
-        maxWidth: svgWidth ? svgWidth + 24 : 820,
+        maxWidth: svgWidth ? svgWidth + 24 : 1000,
       }}
     >
       {/* ── Header ── */}
@@ -204,16 +194,15 @@ export function Board({ state, highlightedSpace, onSpaceClick, selectedCamel, on
           // SVG renders in idx order so the highest idx (top camel) paints last = in front
           const totalCamels = stack.length;
           const camelRings = stack.map((_, idx) => {
-            // bottom (idx=0) near inner, top near outer — spread 0.22 → 0.55
+            // Spread camels further apart for better visibility
             const f = totalCamels === 1
               ? 0.47
-              : 0.22 + (idx / (totalCamels - 1)) * 0.33;
+              : 0.30 + (idx / (totalCamels - 1)) * 0.30;
             return f;
           });
 
           // Check for trap tile on this space
           const trapTile: TrapTile | undefined = trapTiles?.find(t => t.space === i);
-          const trapIcon = trapTile ? (trapTile.type === 'oasis' ? '🌴' : '🏜️') : null;
           const trapPt = trapTile ? ringPt(i, 0.72) : null;
 
           return (
@@ -243,18 +232,33 @@ export function Board({ state, highlightedSpace, onSpaceClick, selectedCamel, on
                 {isFinish ? '🏁' : isStart ? '①' : i + 1}
               </text>
 
-              {/* Desert tile icon */}
+              {/* Desert tile - transparent square with colored outline */}
               {trapTile && trapPt && (
-                <text
-                  x={trapPt.x}
-                  y={trapPt.y}
-                  textAnchor="middle"
-                  dominantBaseline="middle"
-                  fontSize="13"
-                  style={{ userSelect: 'none', pointerEvents: 'none' }}
-                >
-                  {trapIcon}
-                </text>
+                <>
+                  <rect
+                    x={trapPt.x - 12}
+                    y={trapPt.y - 12}
+                    width={24}
+                    height={24}
+                    fill="rgba(255, 255, 255, 0.3)"
+                    stroke={trapTile.type === 'oasis' ? '#16a34a' : '#dc2626'}
+                    strokeWidth={2.5}
+                    rx={3}
+                    style={{ pointerEvents: 'none' }}
+                  />
+                  <text
+                    x={trapPt.x}
+                    y={trapPt.y}
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    fontSize="14"
+                    fontWeight="700"
+                    fill={trapTile.type === 'oasis' ? '#16a34a' : '#dc2626'}
+                    style={{ userSelect: 'none', pointerEvents: 'none' }}
+                  >
+                    {trapTile.type === 'oasis' ? '+1' : '-1'}
+                  </text>
+                </>
               )}
 
               {/* Camel silhouettes in this segment */}
@@ -264,6 +268,9 @@ export function Board({ state, highlightedSpace, onSpaceClick, selectedCamel, on
                 const sc = 0.72;
                 const isSelected = selectedCamel === color;
                 const isClickable = !!onCamelClick;
+                // Crazy camels (black/white) move backward, so rotate them 180°
+                const isCrazyCamel = color === 'black' || color === 'white';
+                const rotation = isCrazyCamel ? rot + 180 : rot;
                 const stroke =
                   color === 'white'  ? '#9ca3af' :
                   color === 'yellow' ? '#b45309' :
@@ -272,7 +279,7 @@ export function Board({ state, highlightedSpace, onSpaceClick, selectedCamel, on
                 return (
                   <g
                     key={color}
-                    transform={`translate(${pt.x} ${pt.y}) rotate(${rot}) scale(${sc}) translate(-20 -15)`}
+                    transform={`translate(${pt.x} ${pt.y}) rotate(${rotation}) scale(${sc}) translate(-20 -15)`}
                     style={{ cursor: isClickable ? 'pointer' : 'default', pointerEvents: isClickable ? 'all' : 'none' }}
                     onClick={(e) => {
                       e.stopPropagation();
@@ -319,18 +326,7 @@ export function Board({ state, highlightedSpace, onSpaceClick, selectedCamel, on
           fontWeight="800"
           fill="#92400e"
           style={{ userSelect: 'none' }}
-        >
-          CAMEL UP
-        </text>
-        <text
-          x={CX} y={CY + 22}
-          textAnchor="middle"
-          dominantBaseline="middle"
-          fontSize="9"
-          fill="#b45309"
-          style={{ userSelect: 'none' }}
-        >
-          ← clockwise →
+        >                  CAMEL UP
         </text>
       </svg>
 
